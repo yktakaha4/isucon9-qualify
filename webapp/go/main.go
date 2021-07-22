@@ -1,13 +1,17 @@
 package main
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/najeira/measure"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -268,6 +272,17 @@ type resSetting struct {
 	Categories        []Category `json:"categories"`
 }
 
+type MyLog struct {
+	Key   string
+	Count int64
+	Sum   float64
+	Min   float64
+	Max   float64
+	Avg   float64
+	Rate  float64
+	P95   float64
+}
+
 func init() {
 	store = sessions.NewCookieStore([]byte("abc"))
 
@@ -356,6 +371,9 @@ func main() {
 	mux.HandleFunc(pat.Get("/users/setting"), getIndex)
 	// Assets
 	mux.Handle(pat.Get("/*"), http.FileServer(http.Dir("../public")))
+	// Stats
+	mux.HandleFunc(pat.Get("/stats"), getStats)
+
 	log.Fatal(http.ListenAndServe(":8000", mux))
 }
 
@@ -838,6 +856,8 @@ func getUserItems(w http.ResponseWriter, r *http.Request) {
 }
 
 func getTransactions(w http.ResponseWriter, r *http.Request) {
+	defer measure.Start("getTransactions:all").Stop()
+	m := measure.Start("getTransactions:part1")
 
 	user, errCode, errMsg := getUser(r)
 	if errMsg != "" {
@@ -866,6 +886,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	m.Stop()
+	m = measure.Start("getTransactions:part2")
 
 	tx := dbx.MustBegin()
 	items := []Item{}
@@ -911,6 +934,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	m.Stop()
+	m = measure.Start("getTransactions:part3")
 
 	itemDetails := []ItemDetail{}
 	for _, item := range items {
@@ -1000,6 +1026,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	tx.Commit()
 
+	m.Stop()
+	m = measure.Start("getTransactions:part4")
+
 	hasNext := false
 	if len(itemDetails) > TransactionsPerPage {
 		hasNext = true
@@ -1013,6 +1042,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	json.NewEncoder(w).Encode(rts)
+
+	m.Stop()
 
 }
 
@@ -2314,4 +2345,38 @@ func outputErrorMsg(w http.ResponseWriter, status int, msg string) {
 
 func getImageURL(imageName string) string {
 	return fmt.Sprintf("/upload/%s", imageName)
+}
+
+func getStats(w http.ResponseWriter, r *http.Request) {
+	stats := measure.GetStats()
+	stats.SortDesc("sum")
+
+	var logs []MyLog
+	for _, s := range stats {
+		log := MyLog{
+			Key:   s.Key,
+			Count: s.Count,
+			Sum:   math.Round(s.Sum),
+			Min:   math.Round(s.Min*100) / 100,
+			Max:   math.Round(s.Max*100) / 100,
+			Avg:   math.Round(s.Avg*100) / 100,
+			Rate:  math.Round(s.Rate*100) / 100,
+			P95:   math.Round(s.P95*100) / 100,
+		}
+		logs = append(logs, log)
+	}
+
+	body := bytes.NewBufferString("key,count,sum,avg\n")
+	for _, s := range logs {
+		body.WriteString(fmt.Sprintf("%s,%d,%.0f,%.2f\n", s.Key, s.Count, s.Sum, s.Avg))
+	}
+
+	w.Header().Set("Content-Type", "text/csv; charset=UTF-8")
+	t := time.Now().Format("20060102_150405")
+	disp := fmt.Sprintf("attachment; filename=\"%s_log.csv\"", t)
+	w.Header().Set("Content-Disposition", disp)
+	_, err := io.Copy(w, body)
+	if err != nil {
+		panic(err)
+	}
 }
