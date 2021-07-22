@@ -355,6 +355,7 @@ func main() {
 	mux.HandleFunc(pat.Post("/login"), postLogin)
 	mux.HandleFunc(pat.Post("/register"), postRegister)
 	mux.HandleFunc(pat.Get("/reports.json"), getReports)
+	mux.HandleFunc(pat.Get("/stats"), getStats)
 	// Frontend
 	mux.HandleFunc(pat.Get("/"), getIndex)
 	mux.HandleFunc(pat.Get("/login"), getIndex)
@@ -371,8 +372,6 @@ func main() {
 	mux.HandleFunc(pat.Get("/users/setting"), getIndex)
 	// Assets
 	mux.Handle(pat.Get("/*"), http.FileServer(http.Dir("../public")))
-	// Stats
-	mux.HandleFunc(pat.Get("/stats"), getStats)
 
 	log.Fatal(http.ListenAndServe(":8000", mux))
 }
