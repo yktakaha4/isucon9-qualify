@@ -945,7 +945,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	if len(userIDs) > 0 {
 		query, args, _ := sqlx.In("SELECT * FROM users WHERE id IN (?)", userIDs)
 		var users []User
-		tx.Select(&users, query, args)
+		tx.Select(&users, query, args...)
 		for _, user := range users {
 			userSimpleMap[user.ID] = UserSimple{
 				ID:           user.ID,
