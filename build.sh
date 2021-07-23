@@ -5,5 +5,5 @@
   git pull origin master
   rm -vf ./isucari
   make
-  systemctl restart isucari.golang.service && echo "restart isucari.golang.service"
+  sudo systemctl restart isucari.golang.service && echo "restart isucari.golang.service"
 )
