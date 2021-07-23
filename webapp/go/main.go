@@ -963,7 +963,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	categoryMap := make(map[int]Category, len(categoryIDs))
 	if len(categoryIDs) > 0 {
-		query, args, _ := sqlx.In("SELECT * FROM categories WHERE id IN (?)", categoryIDs)
+		query, args, _ := sqlx.In("SELECT c.id, c.parent_id, c.category_name, pc.category_name FROM categories c left join categories pc on c.parent_id = pc.id WHERE c.id IN (?)", categoryIDs)
 		var categories []Category
 		tx.Select(&categories, query, args...)
 		for _, category := range categories {
