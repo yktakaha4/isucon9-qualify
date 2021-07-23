@@ -962,7 +962,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	}
 	transactionEvidenceMap := make(map[int64]TransactionEvidence, len(itemIDs))
 	if len(itemIDs) > 0 {
-		query, args, _ := sqlx.In("SELECT t.item_id, t.id, t.status, s.reserve_id FROM transaction_evidences t JOIN shippings s ON t.id = s.transaction_evidence_id WHERE t.item_id IN (?)")
+		query, args, _ := sqlx.In("SELECT t.item_id, t.id, t.status, s.reserve_id FROM transaction_evidences t JOIN shippings s ON t.id = s.transaction_evidence_id WHERE t.item_id IN (?)", itemIDs)
 		var transactionEvidences []TransactionEvidence
 		tx.Select(&transactionEvidences, query, args...)
 		for _, transactionEvidence := range transactionEvidences {
