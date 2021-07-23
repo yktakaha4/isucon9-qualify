@@ -956,6 +956,20 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var categoryIDs []interface{}
+	for _, item := range items {
+		categoryIDs = append(categoryIDs, item.CategoryID)
+	}
+	categoryMap := make(map[int]Category, len(categoryIDs))
+	if len(categoryIDs) > 0 {
+		query, args, _ := sqlx.In("SELECT * FROM categories WHERE id IN (?)", categoryIDs)
+		var categories []Category
+		tx.Select(&categories, query, args...)
+		for _, category := range categories {
+			categoryMap[category.ID] = category
+		}
+	}
+
 	var itemIDs []interface{}
 	for _, item := range items {
 		itemIDs = append(itemIDs, item.ID)
@@ -978,8 +992,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			tx.Rollback()
 			return
 		}
-		category, err := getCategoryByID(tx, item.CategoryID)
-		if err != nil {
+		category, ok := categoryMap[item.CategoryID]
+		if ! ok {
 			outputErrorMsg(w, http.StatusNotFound, "category not found")
 			tx.Rollback()
 			return
