@@ -942,6 +942,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 	var userIDs []interface{}
 	for _, item := range items {
 		userIDs = append(userIDs, item.SellerID)
+		userIDs = append(userIDs, item.BuyerID)
 	}
 	userSimpleMap := make(map[int64]UserSimple, len(userIDs))
 	if len(userIDs) > 0 {
@@ -1024,8 +1025,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if item.BuyerID != 0 {
-			buyer, err := getUserSimpleByID(tx, item.BuyerID)
-			if err != nil {
+			buyer, ok := userSimpleMap[item.BuyerID]
+			if !ok {
 				outputErrorMsg(w, http.StatusNotFound, "buyer not found")
 				tx.Rollback()
 				return
