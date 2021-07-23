@@ -937,6 +937,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 
 	m.Stop()
 	m = measure.Start("getTransactions:part3")
+	m2 := measure.Start("getTransactions:part3-1")
 
 	var userIDs []interface{}
 	for _, item := range items {
@@ -984,8 +985,12 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	m2.Stop()
+
 	itemDetails := []ItemDetail{}
 	for _, item := range items {
+		m2 = measure.Start("getTransactions:part3-2")
+
 		seller, ok := userSimpleMap[item.SellerID]
 		if !ok {
 			outputErrorMsg(w, http.StatusNotFound, "seller not found")
@@ -993,7 +998,7 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		category, ok := categoryMap[item.CategoryID]
-		if ! ok {
+		if !ok {
 			outputErrorMsg(w, http.StatusNotFound, "category not found")
 			tx.Rollback()
 			return
@@ -1029,6 +1034,9 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 			itemDetail.Buyer = &buyer
 		}
 
+		m2.Stop()
+		m2 = measure.Start("getTransactions:part3-3")
+
 		transactionEvidence, ok := transactionEvidenceMap[item.ID]
 		if ok {
 			ssr, err := APIShipmentStatus(getShipmentServiceURL(), &APIShipmentStatusReq{
@@ -1047,6 +1055,8 @@ func getTransactions(w http.ResponseWriter, r *http.Request) {
 		}
 
 		itemDetails = append(itemDetails, itemDetail)
+
+		m2.Stop()
 	}
 	tx.Commit()
 
